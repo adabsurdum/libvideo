@@ -92,7 +92,6 @@
 #include "vidfrm.h"
 #include "vidfmt.h"
 #include "fourcc.h"
-//#include "defaults.h"
 
 #define USE_SELECT (1)
 
@@ -1230,6 +1229,41 @@ static Bool _procEvent( XEvent *e ) {
 }
 
 
+static inline uint8_t clampf( float v ) {
+	if( v < 0.0 )
+		return 0;
+	else
+	if( v > 255.0 )
+		return 255;
+	else
+		return (uint8_t)v;
+}
+
+static inline uint8_t clampi( int v ) {
+	if( v < 0 )
+		return 0;
+	else
+	if( v > 255 )
+		return 255;
+	else
+		return (uint8_t)v;
+}
+
+static inline void YUV2BGR( int y, int u, int v, uint8_t *bgr ) {
+#if 1
+	const int C = y -  16;
+	const int D = u - 128;
+	const int E = v - 128;
+	bgr[2] = clampi( (298*C         + 409*E + 128) >> 8 );
+	bgr[1] = clampi( (298*C - 100*D - 208*E + 128) >> 8 );
+	bgr[0] = clampi( (298*C + 516*D         + 128) >> 8 );
+#else
+	bgr[2] = clampf( y +                 1.402*(u-128) );
+	bgr[1] = clampf( y - 0.344*(v-128) - 0.714*(u-128) );
+	bgr[0] = clampf( y + 1.772*(v-128)                 );
+#endif
+}
+
 static void _render_video_frame( void *vbuf ) {
 
 	const uint16_t *yuyv = vbuf;
@@ -1242,6 +1276,7 @@ static void _render_video_frame( void *vbuf ) {
 	  */
 
 	for(r = 0; r < _fmt.height; r++ ) {
+#if 0
 		for(c = 0; c < _fmt.width; c++ ) {
 			const uint8_t GRAY
 				= (uint8_t)(0x00FF & yuyv[ r*_fmt.width + c ]);
@@ -1249,6 +1284,20 @@ static void _render_video_frame( void *vbuf ) {
 			_data[ 4*_fmt.width*r + 4*c+1 ] = GRAY; // green
 			_data[ 4*_fmt.width*r + 4*c+0 ] = GRAY; // blue
 		}
+#else
+		const uint8_t *iline = (const uint8_t*)(
+			yuyv  + r*_fmt.width );
+		      uint8_t *oline = 
+			_data + r*_fmt.width*4;
+		for(c = 0; c < 2*_fmt.width; c+=4 ) {
+			const int Y0 = iline[c+0];
+			const int U  = iline[c+1];
+			const int Y1 = iline[c+2];
+			const int V  = iline[c+3];
+			YUV2BGR( Y0, U, V, oline + 4*(c/2+0) );
+			YUV2BGR( Y1, U, V, oline + 4*(c/2+1) );
+		}
+#endif
 	}
 
 	err = XPutImage( _cx.display, _cx.win, _cx.gc, _img, 
@@ -1358,9 +1407,9 @@ static void _exec_gui( const char *devname, int W, int H ) {
 
 int main( int argc, char *argv[] ) {
 
-	const char *video_device = "";
+	static char video_device[ 64 ];
 	static const char *USAGE
-		= "%s -w <width> -h <height> -c <FOURCC pixel type> <device path>\n";
+		= "%s -w <width> -h <height> -f <FOURCC pixel type> [ <device path> ]\n";
 
 	printf( "offsetof( struct v4l2_buffer, timestamp) = %ld\n",
 			offsetof( struct v4l2_buffer, timestamp) );
@@ -1385,7 +1434,7 @@ int main( int argc, char *argv[] ) {
 	  */
 
 	do {
-		static const char *OPTIONS = "c:w:h:v:";
+		static const char *OPTIONS = "w:h:f:v:";
 		const char c = getopt( argc, argv, OPTIONS );
 		if( c < 0 ) break;
 
@@ -1399,7 +1448,7 @@ int main( int argc, char *argv[] ) {
 			_fmt.height = atoi( optarg );
 			break;
 
-		case 'c':
+		case 'f':
 			strncpy( _fmt.pixel_format, optarg, 5 );
 			break;
 
@@ -1419,20 +1468,21 @@ int main( int argc, char *argv[] ) {
 	  */
 
 	if( optind < argc ) {
-		video_device
-			= argv[ optind++ ];
-		_vci = video_open( video_device );
-		if( _vci == NULL ) {
-			fprintf( stderr, "error: opening \"%s\"\n", video_device );
-			abort();
-		}
-		if( _vci->config( _vci, &_fmt, 1 ) != 0 )
-			abort();
-
-	} else {
+		strncpy( video_device, argv[ optind++ ], sizeof(video_device) );
+	} else
+	if( first_video_dev( video_device, sizeof(video_device) ) ) {
+		fprintf( stdout, "no video devices found\n" );
 		fprintf( stdout, USAGE, argv[0] );
+		exit(-1);
+	}
+
+	_vci = video_open( video_device );
+	if( _vci == NULL ) {
+		fprintf( stderr, "error: opening \"%s\"\n", video_device );
 		abort();
 	}
+	if( _vci->config( _vci, &_fmt, 1 ) != 0 )
+		abort();
 
 	_vci->start( _vci );
 	_vci->enqueue( _vci, ALL_AVAILABLE_BUFFERS );

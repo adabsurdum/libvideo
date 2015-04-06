@@ -1,5 +1,5 @@
 
-STATICLIB=video.a
+STATICLIB=libvideo.a
 BUILD_ARCH=$(shell uname -m)
 
 ifdef DEBUG
@@ -62,7 +62,7 @@ UNITTESTS=$(addprefix ut-,video)
 
 allunit : $(UNITTESTS)
 
-ut-video : video.c fourcc.c 
+ut-video : video.c fourcc.c firstdev.c
 	$(CC) $(CFLAGS) -DUNIT_TEST_VIDEO=1 -o $@ -lX11 -lXpm $^
 
 ############################################################################

@@ -57,3 +57,13 @@ failed_setjmp:
 	return 0;
 }
 
+int png_save( const char *name, const uint8_t *buf, int W, int H, const char *comment, int stride ) {
+	int status = -1;
+	FILE *fp = fopen( name, "wb" );
+	if( fp ) {
+		status =  png_write( fp, buf, W, H, comment, stride );
+		fclose( fp );
+	}
+	return status;
+}
+
