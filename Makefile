@@ -28,6 +28,7 @@ CFLAGS+=-DHAVE_SINGLETON_MONITOR
 OBJECTS=video.o \
 	fourcc.o \
 	firstdev.o \
+	convert.o \
 	png.o
 
 ############################################################################
@@ -45,6 +46,7 @@ video.o  : video.h vidfmt.h vidfrm.h fourcc.h
 
 fourcc.o   : fourcc.h
 firstdev.o :
+convert.o  :
 
 $(STATICLIB) : $(OBJECTS)
 	$(AR) rcs $@ $^ 
