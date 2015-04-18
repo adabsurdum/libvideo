@@ -48,6 +48,9 @@ fourcc.o   : fourcc.h
 firstdev.o :
 convert.o  :
 
+yuv2pnm : yuyv2pnm.o yuyv2rgb.o pnm.o
+	$(CC) -o $@ $^
+
 $(STATICLIB) : $(OBJECTS)
 	$(AR) rcs $@ $^ 
 
@@ -70,7 +73,7 @@ ut-video : video.c fourcc.c firstdev.c
 ############################################################################
 
 clean : 
-	rm -f *.o ut-* $(STATICLIB) $(DEPLOYMENT_ARCHIVE).tar.gz
+	rm -f *.o ut-* $(STATICLIB) $(DEPLOYMENT_ARCHIVE).tar.gz yuv2pnm
 
 veryclean : clean
 	rm -f *.bin *.pgm

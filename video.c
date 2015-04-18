@@ -778,7 +778,7 @@ static int _snap( struct video_capture *vci, int *len, unsigned char **ubuf ) {
 	if( (NULL != ubuf) && (NULL != len) ) {
 		if( *len < buf.bytesused ) {
 #ifdef _DEBUG
-			fprintf( stdout, "realloc( %p, %ld => %ld )\n",
+			fprintf( stdout, "realloc( %p, %d => %d )\n",
 				*ubuf, *len, buf.bytesused );
 #endif
 			void *p = realloc( *ubuf, buf.bytesused );
@@ -1271,12 +1271,14 @@ static void _render_video_frame( void *vbuf ) {
 
 	/**
 	  * Copy the video frame into our local buffer converting
-	  * it from YUYV to grayscale rendered as 24-bit color
-	  * in the process.
+	  * it from YUYV to...
 	  */
 
 	for(r = 0; r < _fmt.height; r++ ) {
 #if 0
+		/**
+		  * ...grayscale rendered as 24-bit color in the process.
+		  */
 		for(c = 0; c < _fmt.width; c++ ) {
 			const uint8_t GRAY
 				= (uint8_t)(0x00FF & yuyv[ r*_fmt.width + c ]);
@@ -1285,6 +1287,9 @@ static void _render_video_frame( void *vbuf ) {
 			_data[ 4*_fmt.width*r + 4*c+0 ] = GRAY; // blue
 		}
 #else
+		/**
+		  * ...24-bit color in the process.
+		  */
 		const uint8_t *iline = (const uint8_t*)(
 			yuyv  + r*_fmt.width );
 		      uint8_t *oline = 
