@@ -1,6 +1,28 @@
 
 #include <stdint.h>
 
+void yuyv2gray( const uint16_t *yuyv, int w, int h, uint8_t *o ) {
+#if 0
+	int r, c;
+	for(r = 0; r < h; r++ ) {
+		for(c = 0; c < w; c++ ) {
+			o[ r*w + c ] = i[ r*w*2 + c*2 ];
+		}
+	}
+#else
+	int r, c;
+	for(r = 0; r < h; r++ ) {
+		for(c = 0; c < w; c++ ) {
+			// Following demonstrates that when input is treated as
+			// the 2-byte-per-pixel data it is, luminance is the low
+			// byte in every pair.
+			o[ r*w + c ] = (uint8_t)(0x00FF & yuyv[ r*w + c ]);
+		}
+	}
+#endif
+}
+
+
 #ifdef HAVE_FLOAT_CONVERSION
 static inline uint8_t clampf( float v ) {
 	if( v < 0.0 )
@@ -37,6 +59,7 @@ static inline void YUV2RGB( int y, int u, int v, uint8_t *rgb ) {
 	rgb[2] = clampi( (298*C + 516*D         + 128) >> 8 );
 #endif
 }
+
 
 void yuyv2rgb( const uint16_t *yuyv, int w, int h, uint8_t *o ) {
 

@@ -46,9 +46,14 @@ struct video_capture {
 };
 
 struct video_capture *video_open( const char *devpath );
-void yuyv_to_gray( const uint16_t *yuyv, int w, int h, uint8_t *o );
-int first_video_dev( char *path, int maxlen );
 
+/**
+  * YUYV conversion routines.
+  */
+void yuyv2gray( const uint16_t *yuyv, int w, int h, uint8_t *o );
+void yuyv2rgb( const uint16_t *yuyv, int w, int h, uint8_t *o );
+
+int first_video_dev( char *path, int maxlen );
 
 #endif
 

@@ -65,25 +65,3 @@ int ba81_to_rgb( const uint8_t *buf, int w, int h, uint8_t *rgb ) {
 	return 0;
 }
 
-
-void yuyv_to_gray( const uint16_t *yuyv, int w, int h, uint8_t *o ) {
-#if 0
-	int r, c;
-	for(r = 0; r < h; r++ ) {
-		for(c = 0; c < w; c++ ) {
-			o[ r*w + c ] = i[ r*w*2 + c*2 ];
-		}
-	}
-#else
-	int r, c;
-	for(r = 0; r < h; r++ ) {
-		for(c = 0; c < w; c++ ) {
-			// Following demonstrates that when input is treated as
-			// the 2-byte-per-pixel data it is, luminance is the low
-			// byte in every pair.
-			o[ r*w + c ] = (uint8_t)(0x00FF & yuyv[ r*w + c ]);
-		}
-	}
-#endif
-}
-
