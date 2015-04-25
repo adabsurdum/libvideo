@@ -28,7 +28,7 @@ CFLAGS+=-DHAVE_SINGLETON_MONITOR
 OBJECTS=video.o \
 	fourcc.o \
 	firstdev.o \
-	convert.o \
+	yuyv.o \
 	png.o
 
 ############################################################################
