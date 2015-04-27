@@ -712,7 +712,7 @@ static int _dequeue( struct video_capture *vci,
   * This is mutually exclusive with streaming; the video_loop must NOT
   * be running. If it were, there would be no point in this.
   */
-static int _snap( struct video_capture *vci, int *len, unsigned char **ubuf ) {
+static int _snap( struct video_capture *vci, size_t *len, uint8_t **ubuf ) {
 
 	struct video_state *vs
 		= ( struct video_state*)vci;

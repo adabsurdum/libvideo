@@ -18,7 +18,7 @@ struct video_capture {
 
 	int   (*config)( struct video_capture *, struct video_format *, int );
 
-	int   (*snap)( struct video_capture *, int *len, unsigned char **frame );
+	int   (*snap)( struct video_capture *, size_t *len, uint8_t **frame );
 
 	int   (*start)( struct video_capture * );
 
