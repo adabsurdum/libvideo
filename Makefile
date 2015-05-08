@@ -29,7 +29,8 @@ OBJECTS=video.o \
 	fourcc.o \
 	firstdev.o \
 	yuyv.o \
-	png.o
+	png.o \
+	pgm.o
 
 ############################################################################
 # Rules
