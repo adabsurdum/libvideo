@@ -778,7 +778,7 @@ static int _snap( struct video_capture *vci, size_t *len, uint8_t **ubuf ) {
 	if( (NULL != ubuf) && (NULL != len) ) {
 		if( *len < buf.bytesused ) {
 #ifdef _DEBUG
-			fprintf( stdout, "realloc( %p, %d => %d )\n",
+			fprintf( stdout, "realloc( %p, %ld => %d )\n",
 				*ubuf, *len, buf.bytesused );
 #endif
 			void *p = realloc( *ubuf, buf.bytesused );
@@ -810,13 +810,13 @@ static void _destroy( struct video_capture *vci ) {
 	_unmap_frames( vs->frame_count, vs->frame );
 	close( vs->fd );
 
-#ifndef HAVE_SINGLETON_MONITOR
+#ifndef HAVE_SINGLETON_DEVICE
 	free( vs );
 #endif
 }
 
 
-#ifdef HAVE_SINGLETON_MONITOR
+#ifdef HAVE_SINGLETON_DEVICE
 static struct video_state _singleton_state = {
 	.interface = {
 		.format  = _format,
@@ -898,7 +898,7 @@ struct video_capture *video_open( const char *devpath ) {
 		goto unwind0;
 	}
 
-#ifdef HAVE_SINGLETON_MONITOR
+#ifdef HAVE_SINGLETON_DEVICE
 	vs = &_singleton_state;
 #else
 	vs = calloc( 1, sizeof(struct video_state) );

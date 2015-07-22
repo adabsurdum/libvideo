@@ -1,11 +1,16 @@
 
+GRAPHICS_FILE_FORMAT_DIR=../libgraphicsff
+GRAPHICS_FILE_FORMAT_LIB=graphicsff
+
 STATICLIB=libvideo.a
 BUILD_ARCH=$(shell uname -m)
 
 ifdef DEBUG
-CFLAGS+=-g -D_DEBUG
+CFLAGS+=-g
+CPPFLAGS+=-D_DEBUG
 else
-CFLAGS+=-O3 -DNDEBUG
+CFLAGS+=-O3
+CFLAGS+=-DNDEBUG
 endif
 
 CFLAGS+=-Wall -std=c99
@@ -16,26 +21,23 @@ CFLAGS+=-Wall -std=c99
 #  // Prototype.
 #  inline void foo (const char) __attribute__((always_inline));
 
-CFLAGS+=-DHAVE_SINGLETON_MONITOR
+CPPFLAGS+=-DHAVE_SINGLETON_DEVICE
 # The resulting executable will only monitor one video device per process.
 
-#CFLAGS += -D_POSIX_C_SOURCE=200809L
-# _POSIX_SOURCE sufficient for localtime_r.
-# getline requires _POSIX_C_SOURCE=200809L.
+LDFLAGS=-L$(GRAPHICS_FILE_FORMAT_DIR)
+LDLIBS=-l$(GRAPHICS_FILE_FORMAT_LIB)
 
 ############################################################################
 
 OBJECTS=video.o \
 	fourcc.o \
 	firstdev.o \
-	yuyv.o \
-	png.o \
-	pgm.o
+	yuyv.o
 
 ############################################################################
 # Rules
 
-all : $(STATICLIB)
+all : $(STATICLIB) yuyv2img
 
 # Following object dependencies use GNU make's implicit rules.
 
@@ -47,13 +49,14 @@ video.o  : video.h vidfmt.h vidfrm.h fourcc.h
 
 fourcc.o   : fourcc.h
 firstdev.o :
-convert.o  :
-
-yuyv2img : convyuyv.o yuyv.o pnm.o png.o
-	$(CC) -o $@ $^ -lpng
+convyuyv.o : convyuyv.c
+	$(CC) -c -o $@ $(CFLAGS) -I../libgraphicsff $<
 
 $(STATICLIB) : $(OBJECTS)
 	$(AR) rcs $@ $^ 
+
+yuyv2img : convyuyv.o yuyv.o
+	$(CC) -o $@ $^ -lpng $(LDFLAGS) $(LDLIBS)
 
 ############################################################################
 # For future reference
@@ -69,15 +72,12 @@ UNITTESTS=$(addprefix ut-,video)
 allunit : $(UNITTESTS)
 
 ut-video : video.c fourcc.c firstdev.c
-	$(CC) $(CFLAGS) -DUNIT_TEST_VIDEO=1 -o $@ -lX11 -lXpm $^
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DUNIT_TEST_VIDEO=1 -o $@ -lX11 -lXpm $^
 
 ############################################################################
 
 clean : 
 	rm -f *.o ut-* $(STATICLIB) $(DEPLOYMENT_ARCHIVE).tar.gz yuyv2img
-
-veryclean : clean
-	rm -f *.bin *.pgm
 
 $(DEPLOYMENT_ARCHIVE).tar.gz : *.c *.h Makefile
 	mkdir $(DEPLOYMENT_ARCHIVE)
@@ -85,8 +85,5 @@ $(DEPLOYMENT_ARCHIVE).tar.gz : *.c *.h Makefile
 	tar cfz $@ "$(DEPLOYMENT_ARCHIVE)/"
 	rm -rf $(DEPLOYMENT_ARCHIVE)
 
-upload : $(DEPLOYMENT_ARCHIVE).tar.gz
-	scp $< pi@10.0.0.2:$<
-
-.PHONY : all allunit clean veryclean upload 
+.PHONY : all allunit clean upload 
 
