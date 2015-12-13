@@ -962,9 +962,11 @@ unwind0:
 #include <getopt.h>
 #include <stddef.h>
 
+#ifdef HAVE_X11
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
+#endif
 
 /**
   * The video interface, testing of which is really the only point of all
@@ -985,6 +987,8 @@ static struct video_format _fmt = {
 	.height = 120,
 	.pixel_format = {'Y','U','Y','V','\0'}
 };
+
+#ifdef HAVE_X11
 
 const long ALLEVENTS 
 	= 0 // NoEventMask
@@ -1427,13 +1431,19 @@ static void _exec_gui( const char *devname, int W, int H ) {
 	XDestroyWindow( d, topwin );
 }
 
+#endif // HAVE_X11
+
 
 int main( int argc, char *argv[] ) {
 
 	static char video_device[ 64 ];
 	static const char *USAGE
 		= "%s -w <width> -h <height> -f <FOURCC pixel type> [ <device path> ]\n";
-
+#ifndef HAVE_X11
+	size_t   snapsize = 0;
+	uint8_t *snapshot = NULL;
+#endif
+#if 0
 	printf( "offsetof( struct v4l2_buffer, timestamp) = %ld\n",
 			offsetof( struct v4l2_buffer, timestamp) );
 	printf( "offsetof( struct video_frame, timestamp) = %ld\n",
@@ -1446,11 +1456,7 @@ int main( int argc, char *argv[] ) {
 			sizeof(struct v4l2_buffer) );
 	printf( "sizeof(struct video_frame) = %ld\n",
 			sizeof(struct video_frame) );
-	/**
-	  * Required initializations.
-	  */
-
-	memset( &_cx, 0, sizeof(_cx) );
+#endif
 
 	/**
 	  * Process options
@@ -1507,12 +1513,34 @@ int main( int argc, char *argv[] ) {
 	if( _vci->config( _vci, &_fmt, 1 ) != 0 )
 		abort();
 
+#ifndef HAVE_X11
+
+	/**
+	  * Without X, just emit a snapshot to a tmp file in CWD.
+	  */
+
+	if( _vci->snap( _vci, &snapsize, &snapshot ) == 0 ) {
+		char filename[ 10 ];
+		int fd;
+		strcpy( filename, "imgXXXXXX" );
+		if( (fd = mkstemp( filename )) >= 0 ) {
+			write( fd, snapshot, snapsize );
+			close( fd );
+			fprintf( stdout, "%dW x %dH %s in %s\n", _fmt.width, _fmt.height, _fmt.pixel_format, filename );
+		} else
+			fprintf( stderr, "failed capturing\n" );
+	}
+
+#else
+
 	_vci->start( _vci );
 	_vci->enqueue( _vci, ALL_AVAILABLE_BUFFERS );
 
 	/**
 	  * Set up shared context.
 	  */
+
+	memset( &_cx, 0, sizeof(_cx) );
 
 	_cx.display  = XOpenDisplay( NULL );
 
@@ -1543,8 +1571,10 @@ int main( int argc, char *argv[] ) {
 		}
 		XCloseDisplay( _cx.display );
 	}
-
 	_vci->stop( _vci );
+
+#endif // HAVE_X11
+
 	_vci->destroy( _vci );
 
 	return 0;

@@ -67,17 +67,16 @@ yuyv2img : convyuyv.o yuyv.o
 ############################################################################
 # Unit tests
 
-UNITTESTS=$(addprefix ut-,video)
+x11video : video.c fourcc.c firstdev.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DUNIT_TEST_VIDEO=1 -DHAVE_X11 -o $@ -lX11 -lXpm $^
 
-allunit : $(UNITTESTS)
-
-ut-video : video.c fourcc.c firstdev.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DUNIT_TEST_VIDEO=1 -o $@ -lX11 -lXpm $^
+snapshot : video.c fourcc.c firstdev.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -D_POSIX_C_SOURCE=200112L -DUNIT_TEST_VIDEO=1 -o $@ $^
 
 ############################################################################
 
 clean : 
-	rm -f *.o ut-* $(STATICLIB) $(DEPLOYMENT_ARCHIVE).tar.gz yuyv2img
+	rm -f *.o ut-* $(STATICLIB) $(DEPLOYMENT_ARCHIVE).tar.gz yuyv2img x11video snapshot
 
 $(DEPLOYMENT_ARCHIVE).tar.gz : *.c *.h Makefile
 	mkdir $(DEPLOYMENT_ARCHIVE)
