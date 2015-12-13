@@ -730,11 +730,10 @@ static int _dequeue( struct video_capture *vci,
   * This is mutually exclusive with streaming; the video_loop must NOT
   * be running. If it were, there would be no point in this.
   */
-static int _snap( struct video_capture *vci, size_t *len, uint8_t **ubuf ) {
+static int _snap( struct video_capture *vci, int timeout, size_t *len, uint8_t **ubuf ) {
 
 	struct video_state *vs
 		= ( struct video_state*)vci;
-	//struct video_frame dequeued;
 
 	int econd = 0;
 
@@ -772,13 +771,13 @@ static int _snap( struct video_capture *vci, size_t *len, uint8_t **ubuf ) {
 
 	while( vs->queued ) {
 
-		if( _dequeue( vci, 2 /* seconds */, (struct video_frame*)&buf ) ) {
+		if( _dequeue( vci, timeout, (struct video_frame*)&buf ) ) {
 			if( errno == EAGAIN )
 				continue;
 			if( errno == EIO )
 				continue; // TODO: Revisit this.
 			// Any other error is fatal.
-			warn("dequeueing a buffer(%d)", __LINE__ );
+			warn("error %d: dequeueing a buffer(%d)", errno, __LINE__ );
 			econd = -1;
 		}
 
@@ -1340,7 +1339,7 @@ static void _render_video_frame( void *vbuf ) {
 }
 
 
-static void _exec_gui( const char *devname, int W, int H ) {
+static void _exec_gui( const char *devname, int timeout_s, int W, int H ) {
 
 	Display *d = _cx.display;
 	Window topwin;
@@ -1419,7 +1418,7 @@ static void _exec_gui( const char *devname, int W, int H ) {
 			  * and immediately requeue the frame.
 			  */
 
-			if( _vci->dequeue( _vci, 1 /* second */, &fr ) == 0 ) {
+			if( _vci->dequeue( _vci, timeout_s, &fr ) == 0 ) {
 				_render_video_frame( fr.mem );
 				_vci->enqueue( _vci, 1 << fr.buffer_id );
 			}
@@ -1438,11 +1437,13 @@ int main( int argc, char *argv[] ) {
 
 	static char video_device[ 64 ];
 	static const char *USAGE
-		= "%s -w <width> -h <height> -f <FOURCC pixel type> [ <device path> ]\n";
+		= "%s -w <width>[%d] -h <height>[%d] -f <FOURCC pixel type>[%s] -t <timeout(s)>[%d] [ <device path> ]\n";
 #ifndef HAVE_X11
 	size_t   snapsize = 0;
 	uint8_t *snapshot = NULL;
 #endif
+	int timeout_s = 1;
+
 #if 0
 	printf( "offsetof( struct v4l2_buffer, timestamp) = %ld\n",
 			offsetof( struct v4l2_buffer, timestamp) );
@@ -1463,8 +1464,8 @@ int main( int argc, char *argv[] ) {
 	  */
 
 	do {
-		static const char *OPTIONS = "w:h:f:v:";
-		const char c = getopt( argc, argv, OPTIONS );
+		static const char *OPTIONS = "w:h:f:t:v:?";
+		const int c = getopt( argc, argv, OPTIONS );
 		if( c < 0 ) break;
 
 		switch(c) {
@@ -1481,11 +1482,20 @@ int main( int argc, char *argv[] ) {
 			strncpy( _fmt.pixel_format, optarg, 5 );
 			break;
 
+		case 't':
+			timeout_s = atoi( optarg );
+			break;
+
 		case 'v':
 #ifdef HAVE_EXTRAS
 			_verbosity = atoi( optarg );
 #endif
 			break;
+
+		case '?':
+			goto usage;
+			break;
+
 		default:
 			printf ("error: unknown option: %c\n", c );
 			exit(-1);
@@ -1501,7 +1511,7 @@ int main( int argc, char *argv[] ) {
 	} else
 	if( first_video_dev( video_device, sizeof(video_device) ) ) {
 		fprintf( stdout, "no video devices found\n" );
-		fprintf( stdout, USAGE, argv[0] );
+		goto usage;
 		exit(-1);
 	}
 
@@ -1519,7 +1529,7 @@ int main( int argc, char *argv[] ) {
 	  * Without X, just emit a snapshot to a tmp file in CWD.
 	  */
 
-	if( _vci->snap( _vci, &snapsize, &snapshot ) == 0 ) {
+	if( _vci->snap( _vci, timeout_s, &snapsize, &snapshot ) == 0 ) {
 		char filename[ 10 ];
 		int fd;
 		strcpy( filename, "imgXXXXXX" );
@@ -1529,7 +1539,8 @@ int main( int argc, char *argv[] ) {
 			fprintf( stdout, "%dW x %dH %s in %s\n", _fmt.width, _fmt.height, _fmt.pixel_format, filename );
 		} else
 			fprintf( stderr, "failed capturing\n" );
-	}
+	} else
+		fprintf( stderr, "failed capturing\n" );
 
 #else
 
@@ -1564,7 +1575,7 @@ int main( int argc, char *argv[] ) {
 			XSetErrorHandler( _errorHandler );
 			XSetIOErrorHandler( _ioErrorHandler );
 #endif
-			_exec_gui( video_device, _fmt.width, _fmt.height ); // runs an event loop
+			_exec_gui( video_device, timeout_s, _fmt.width, _fmt.height ); // runs an event loop
 
 			if( _img )
 				XDestroyImage( _img );
@@ -1578,6 +1589,9 @@ int main( int argc, char *argv[] ) {
 	_vci->destroy( _vci );
 
 	return 0;
+usage:
+	fprintf( stdout, USAGE, argv[0], _fmt.width, _fmt.height, _fmt.pixel_format, timeout_s );
+	return -1;
 }
 
 #endif
